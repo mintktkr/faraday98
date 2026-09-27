@@ -32,7 +32,7 @@ Every project below is linked; read the originals.
 | Multicore | **smp.vxd** (JHRobotics): SMP plus SSE/AVX context switching for 9x. Only apps using libsmp get the extra cores. "Expect large stability issues" | Optional. The N3700 has 4 cores |
 | **eMMC boot disk** | Nothing native for Win9x. But **on Bay Trail, the eMMC shows up as a PCI device in legacy boot mode and ACPI-only in UEFI** (winraid thread). SeaBIOS has SDHCI support | Boot through the native CSM, then check `lspci` in legacy mode. If the eMMC is PCI, INT13 disk access plus Win98's compatibility-mode disk driver may just work |
 | **Touchpad and touchscreen (I2C-HID)** | **Nothing for Win9x found anywhere.** | Check the BIOS for a "Touchpad: Basic" (PS/2) setting first. Failing that, a USB mouse through xHCI98 already makes the machine usable. A native I2C-HID VxD would be **our original driver**. Legacy mode may also turn the LPSS I2C controller into a PCI device, which is much easier to reach than ACPI |
-| **Wifi** | No Win9x wifi drivers found. Janus and oerg866's work can load **XP NDIS 5.1** NIC drivers on 98, but only wired NICs have been proven | Identify the card first. If it has an XP driver, an experiment is possible; otherwise treat it as dead. USB ethernet through xHCI98 is the real network path |
+| **Wifi** | No Win9x wifi drivers found. Janus and oerg866's work can load **XP NDIS 5.1** NIC drivers on 98, but only wired NICs have been proven | The card is an Intel 3165, which has no XP or 9x driver, so wifi is dead. faraday does have **wired ethernet** (Realtek RTL8168, see the hardware probe note), which is the real network path |
 
 ## The AI-assisted wave: who did what, and how
 
@@ -59,9 +59,10 @@ emulator for fast iteration → real hardware as the final judge → documents a
   They used it to build and tune a Voodoo 3/4/5 driver stack on real hardware.
 - [ryandeering/claudewin9x](https://github.com/ryandeering/claudewin9x): Claude Code on 95/98 via a bridge server.
 
-For faraday this needs a network, meaning **xHCI98 plus a USB ethernet adapter** (the ASIX AX88772
-is known to work, see also ijsf/AX88772B_WinME98SE). Once that works, the loop is: agent on erogu
-builds → pushes to faraday → runs → takes a screenshot → reads the log.
+For faraday this needs a network. The first choice is the onboard **Realtek RTL8168** (see
+`2026-09-27-faraday-hardware.md`). The fallback is xHCI98 plus a USB ethernet adapter (the ASIX
+AX88772 is known to work; see also ijsf/AX88772B_WinME98SE). Once that works, the loop is: agent on
+a Linux box builds → pushes to faraday → runs → takes a screenshot → reads the log.
 
 ## Toolchains in use
 
@@ -85,6 +86,8 @@ builds → pushes to faraday → runs → takes a screenshot → reads the log.
   write logs to a drive on the controller being tested, and use a PS/2 keyboard during XHCIQUAL.
 
 ## Not yet verified (needs faraday on the desk)
+
+*Update: the probe happened the same day. See `2026-09-27-faraday-hardware.md`.*
 
 faraday wasn't on the desk yet on 2026-09-27. The first session should be a **read-only hardware
 probe from a Linux live USB**:

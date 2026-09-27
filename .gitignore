@@ -1,0 +1,9 @@
+# third-party copies, kept local (link to the originals instead)
+research/readmes/
+research/raw-*
+# never publish: Microsoft binaries, disk images, agent transcripts
+*.iso
+*.img
+*.vhd
+*.qcow2
+*.jsonl

@@ -14,7 +14,7 @@ and report anything that's wrong.
 ## status
 
 - [x] hardware probe from the installed Linux (UEFI boot)
-- [ ] BIOS: legacy boot option? touchpad Basic mode?
+- [x] BIOS: Legacy boot exists, touchpad Basic mode = PS/2 (verified from Linux)
 - [ ] Realtek RTL8168 rev 15: try the NDIS2 driver with REV_15 added to its INF
 - [ ] XHCIQUAL from real DOS
 - [ ] QuickInstall onto a spare disk or SD card (keep the Arch eMMC install intact)

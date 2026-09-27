@@ -42,9 +42,56 @@ observed on the machine unless it says otherwise.
 - If you forget the supervisor password: after 3 wrong tries the BIOS shows a "System Disabled"
   code, and the standard InsydeH2O unlock-password algorithm works on it.
 
+## legacy boot evidence (efivarfs, UEFI boot, 2026-09-27)
+
+Read straight out of `/sys/firmware/efi/efivars`. No hardware change and no NVRAM write.
+
+**The firmware publishes the eMMC as a legacy (INT13) boot device.** The EFI boot list contains
+
+```
+Boot0002* HBG4e    BBS(HD,,0x500)
+```
+
+and `HBG4e` is the eMMC's own model string (`/sys/block/mmcblk0/device/name`; `mmc0:0001 HBG4e` in
+dmesg). Its device path decodes as ACPI(PCI root, PNP0A03) → PCI(dev 0x10, func 0) → the SDHCI at
+`_ADR 0x00100000`, i.e. SDHCI0 = the eMMC. So that BBS entry is the internal eMMC, seen through the
+firmware's legacy disk path.
+
+**The firmware is actively enumerating legacy devices.** `LegacyDevOrder` is populated (entries with
+connectivity 0x01/0x02/0x03/0x06/0x80 and device indices 0x11/0x12) and `TargetHddDevPath` ends in
+`HD(1,GPT,93a633e0-a542-42ad-8b8c-8d0ba08b0046,0x800,0x32000)`, the leftover Windows Boot Manager
+partition. `LegacyDevOrder` is an EDK2 variable that only exists when a legacy path is live.
+
+**No CSM toggle shows up as its own variable.** The setup answers are one blob: `Setup`
+(GUID `a04a27f4-df00-4d42-b552-39511302113d`, 874 bytes), with siblings `BootType` (1 byte, `0x02`),
+`RestoreFactory` (`0x01`), `PhysicalBootOrder` (empty) and `Timeout` (0). `BootType` is very likely
+the UEFI/legacy mode setting, but the encoding isn't decoded, so the fact is that the variable
+exists, not what its value means. Baselines saved on faraday as
+`~/bios-setup-baseline-2026-09-27.bin` and `~/bios-legacydevorder-2026-09-27.bin`: change one BIOS
+setting at a time and diff to decode the layout empirically.
+
+**Second SDHCI = a scratch boot medium.** `mmc1` (`80860F14:01`, ACPI `\_SB_.PCI0.SDHC`, status 15)
+is a second SDHCI controller with no card in it, while `mmc0` (`80860F14:00`) is the eMMC. The R3-131T spec sheet lists an SD card reader, so an SD card is a Win98 install target that never
+touches the Arch install (confirmed once a card shows up on `mmc1`).
+
+### what this changes
+
+The finding that would have killed bare-metal Win98 here was "the eMMC is ACPI-only, so INT13 cannot
+see it". The firmware says the opposite: it publishes the eMMC *as an INT13 boot disk* and keeps a
+legacy device order. The setup menu does offer Legacy and a Basic (PS/2) touchpad mode (see the BIOS
+section). Still unverified: that INT13 actually reads the eMMC (a DOS disk editor listing the MBR,
+read-only).
+
+Also in the boot list: `Boot0005 Windows Boot Manager` and `Boot0006 ubuntu` (leftovers from earlier
+installs), `Boot0000 Linpus lite` (the Arch install, which is `BootCurrent`), `Boot2001 EFI USB
+Device` and `Boot0004 EFI Network` (remote-connect placeholders). There is no BBS entry for CD or
+USB, but BBS entries only exist for devices attached at the time, so that proves nothing either way.
+
 ## still to check (needs someone at the machine)
 
 1. ~~BIOS: legacy boot and a touchpad Basic mode~~ Both exist, see above.
-2. Boot something in Legacy mode: boot a Linux live USB in legacy mode and compare `lspci -nn`. Does the
+2. Boot something in Legacy mode (e.g. a Linux live USB) and compare `lspci -nn`. Does the
    eMMC (`80860F14`) or the LPSS I2C (`808622C1`) show up as a PCI device?
 3. `XHCIQUAL` from real DOS
+4. Decode `BootType`: it was `0x02` under UEFI. Dump it again after booting once with Boot Mode =
+   Legacy and diff it against the baseline
